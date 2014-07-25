@@ -266,6 +266,11 @@ public class DownloadThread extends Thread {
         mPolicyDirty = false;
 
         int networkUsable = mInfo.checkCanUseNetwork();
+	// Following code will forcefully allow ethernet network as usable required for v210/c110.
+        if (networkUsable != DownloadInfo.NETWORK_OK) {
+            Log.i(Constants.TAG, " Forcing ethernet connection usable for download to work!!!");
+	    networkUsable = DownloadInfo.NETWORK_OK;
+	}
         if (networkUsable != DownloadInfo.NETWORK_OK) {
             int status = Downloads.Impl.STATUS_WAITING_FOR_NETWORK;
             if (networkUsable == DownloadInfo.NETWORK_UNUSABLE_DUE_TO_SIZE) {

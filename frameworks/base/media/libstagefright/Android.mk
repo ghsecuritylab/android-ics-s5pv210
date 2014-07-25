@@ -3,6 +3,10 @@ include $(CLEAR_VARS)
 
 include frameworks/base/media/libstagefright/codecs/common/Config.mk
 
+ifeq ($(BOARD_USES_MFC_FPS), true)
+LOCAL_CFLAGS += -DCONFIG_MFC_FPS
+endif
+
 LOCAL_SRC_FILES:=                         \
         ACodec.cpp                        \
         AACExtractor.cpp                  \
@@ -147,6 +151,21 @@ LOCAL_SHARED_LIBRARIES += \
         libdl
 
 LOCAL_CFLAGS += -Wno-multichar
+
+ifeq ($(BOARD_USES_HDMI),true)
+LOCAL_CFLAGS += -DBOARD_USES_HDMI
+endif
+
+ifeq ($(BOARD_USE_SAMSUNG_COLORFORMAT), true)
+LOCAL_C_INCLUDES += device/samsung/common/$(TARGET_BOARD_PLATFORM)/include
+LOCAL_CFLAGS += -DUSE_SAMSUNG_COLORFORMAT
+endif
+
+ifeq ($(BOARD_USE_V4L2), false)
+ifeq ($(BOARD_USE_S3D_SUPPORT), true)
+LOCAL_CFLAGS += -DS3D_SUPPORT
+endif
+endif
 
 LOCAL_MODULE:= libstagefright
 

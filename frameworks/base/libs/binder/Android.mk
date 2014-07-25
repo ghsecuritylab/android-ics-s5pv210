@@ -37,6 +37,14 @@ include $(CLEAR_VARS)
 LOCAL_LDLIBS += -lpthread
 LOCAL_MODULE := libbinder
 LOCAL_SHARED_LIBRARIES := liblog libcutils libutils
+
+ifeq ($(BOARD_USE_V4L2_ION), true)
+LOCAL_SHARED_LIBRARIES += libion
+LOCAL_CFLAGS += -DUSE_V4L2_ION
+sources += MemoryHeapBaseIon.cpp
+LOCAL_C_INCLUDES := device/samsung/common/$(TARGET_BOARD_PLATFORM)/include
+endif
+
 LOCAL_SRC_FILES := $(sources)
 include $(BUILD_SHARED_LIBRARY)
 

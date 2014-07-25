@@ -35,10 +35,23 @@
 #include "SkAutoKern.h"
 #include "SkBitmapProcShader.h"
 #include "SkDrawProcs.h"
+#include "SkPostConfig.h"
+#define LOG_TAG "SKIA"
+#include <utils/Log.h>
 
 //#define TRACE_BITMAP_DRAWS
 
 #define kBlitterStorageLongCount    (sizeof(SkBitmapProcShader) >> 2)
+#if defined(FIMG2D_ENABLED)
+#if defined(SAMSUNG_EXYNOS4210)
+#include "SkFimgApi3x.h"
+#endif
+#if defined(SAMSUNG_EXYNOS4x12)
+#include "SkFimgApi4x.h"
+#endif
+Fimg fimg;
+#define FLOAT_TO_INT(x) (int)(x+0.5)
+#endif
 
 /** Helper for allocating small blitters on the stack.
  */
@@ -653,6 +666,147 @@ static inline SkPoint* as_rightbottom(SkRect* r) {
     return ((SkPoint*)(void*)r) + 1;
 }
 
+#if defined(FIMG2D_ENABLED)
+SkMutex gG2DMutex;
+
+void SkDraw::drawRect_withG2D(const SkRect& rect, const SkPaint& paint) const {
+    SkDEBUGCODE(this->validate();)
+
+    // nothing to draw
+    if (fClip->isEmpty() ||
+        (paint.getAlpha() == 0 && paint.getXfermode() == NULL))
+        return;
+
+    SkPoint strokeSize;
+    RectType rtype = ComputeRectType(paint, *fMatrix, &strokeSize);
+
+#ifdef SK_DISABLE_FAST_AA_STROKE_RECT
+    if (kStroke_RectType == rtype && paint.isAntiAlias())
+        rtype = kPath_RectType;
+#endif
+
+    if (kPath_RectType == rtype) {
+        SkPath  tmp;
+        tmp.addRect(rect);
+        tmp.setFillType(SkPath::kWinding_FillType);
+        this->drawPath(tmp, paint, NULL, true);
+        return;
+    }
+
+    const SkMatrix& matrix = *fMatrix;
+    SkRect          devRect;
+
+    // transform rect into devRect
+    matrix.mapXY(rect.fLeft, rect.fTop, rect_points(devRect, 0));
+    matrix.mapXY(rect.fRight, rect.fBottom, rect_points(devRect, 1));
+    devRect.sort();
+
+    if (fBounder && !fBounder->doRect(devRect, paint))
+        return;
+
+    // look for the quick exit, before we build a blitter
+    {
+        SkIRect ir;
+        devRect.roundOut(&ir);
+        if (paint.getStyle() != SkPaint::kFill_Style)
+            // extra space for hairlines
+            ir.inset(-1, -1);
+        if (fClip->quickReject(ir))
+            return;
+    }
+
+    SkAutoBlitterChoose blitterStorage(*fBitmap, matrix, paint);
+    SkBlitter*          blitter = blitterStorage.get();
+    const SkRegion*     clip = fClip;
+
+    if (fimg.srcAddr != NULL) {
+        fimg.dstX           = FLOAT_TO_INT(devRect.fLeft);
+        fimg.dstY           = FLOAT_TO_INT(devRect.fTop);
+        fimg.dstW           = FLOAT_TO_INT(devRect.width());
+        fimg.dstH           = FLOAT_TO_INT(devRect.height());
+
+        if (clip->isRect()) {
+            const SkIRect& clipBounds = clip->getBounds();
+            fimg.clipT = clipBounds.fTop;
+            fimg.clipB = clipBounds.fBottom;
+            fimg.clipL = clipBounds.fLeft;
+            fimg.clipR = clipBounds.fRight;
+        } else {
+            fimg.srcAddr = NULL;
+            fimg.clipT = 0;
+            fimg.clipB = 0;
+            fimg.clipL = 0;
+            fimg.clipR = 0;
+        }
+
+#ifdef FIMGAPI_SW_CLIPPING
+       if ((fimg.clipL > fimg.dstX) || (fimg.clipT > fimg.dstY) ||
+            ((fimg.clipR) < (fimg.dstX + fimg.dstW)) ||
+            ((fimg.clipB) < (fimg.dstY + fimg.dstH))) {
+            float divw = ((float)fimg.dstW)/((float)fimg.srcW);
+            float divh = ((float)fimg.dstH)/((float)fimg.srcH);
+
+            fimg.dstX = SkMax32(fimg.dstX, fimg.clipL);
+            fimg.dstY = SkMax32(fimg.dstY, fimg.clipT);
+            fimg.dstW = SkMin32(fimg.dstX + fimg.dstW, fimg.clipR) - fimg.dstX;
+            fimg.dstH = SkMin32(fimg.dstY + fimg.dstH, fimg.clipB) - fimg.dstY;
+
+            fimg.srcX = FLOAT_TO_INT(((float)fimg.dstX - (float)devRect.fLeft)/divw);
+            fimg.srcY = FLOAT_TO_INT(((float)fimg.dstY - (float)devRect.fTop)/divh);
+            fimg.srcW = FLOAT_TO_INT(((float)fimg.dstW)/divw);
+            fimg.srcH = FLOAT_TO_INT(((float)fimg.dstH)/divh);
+        }
+#endif
+
+        SkXfermode::Mode  mode;
+        SkXfermode::IsMode(paint.getXfermode(), &mode);
+        fimg.xfermode = mode;
+        fimg.isDither = paint.isDither();
+        fimg.isFilter = paint.isFilterBitmap();
+        fimg.colorFilter = (int)paint.getColorFilter();
+
+        if ((fimg.dstX<0)||(fimg.dstY<0)||(fimg.dstW<=0)||(fimg.dstH<=0))
+            fimg.srcAddr = NULL;
+
+        if (fimg.srcAddr != NULL) {
+            if (FimgApiStretch(&fimg, __func__)) {
+                fimg.srcAddr = NULL;
+                gG2DMutex.release();
+                return;
+            } else
+                gG2DMutex.release();
+        } else
+            gG2DMutex.release();
+    }
+    /*  we want to "fill" if we are kFill or kStrokeAndFill, since in the latter
+     * case we are also hairline (if we've gotten to here), which devolves to
+     * effectively just kFill
+     */
+    switch (rtype) {
+    case kFill_RectType:
+        if (paint.isAntiAlias())
+            SkScan::AntiFillRect(devRect, clip, blitter);
+        else
+            SkScan::FillRect(devRect, clip, blitter);
+        break;
+    case kStroke_RectType:
+        if (paint.isAntiAlias())
+            SkScan::AntiFrameRect(devRect, strokeSize, clip, blitter);
+        else
+            SkScan::FrameRect(devRect, strokeSize, clip, blitter);
+        break;
+    case kHair_RectType:
+        if (paint.isAntiAlias())
+            SkScan::AntiHairRect(devRect, clip, blitter);
+        else
+            SkScan::HairRect(devRect, clip, blitter);
+        break;
+    default:
+        SkASSERT(!"bad rtype");
+    }
+    fimg.srcAddr = NULL;
+}
+#endif // FIMG2D_ENABLED
 static bool easy_rect_join(const SkPaint& paint, const SkMatrix& matrix,
                            SkPoint* strokeSize) {
     if (SkPaint::kMiter_Join != paint.getStrokeJoin() ||
@@ -1111,6 +1265,11 @@ void SkDraw::drawBitmap(const SkBitmap& bitmap, const SkMatrix& prematrix,
     if (!matrix.setConcat(*fMatrix, prematrix)) {
         return;
     }
+#if defined(FIMG2D_ENABLED)
+    fimg.matrixType = (int)matrix.getType();
+    fimg.matrixSx = matrix.getScaleX();
+    fimg.matrixSy = matrix.getScaleY();
+#endif
 
     if (clipped_out(matrix, *fClip, bitmap.width(), bitmap.height())) {
         return;
@@ -1151,7 +1310,95 @@ void SkDraw::drawBitmap(const SkBitmap& bitmap, const SkMatrix& prematrix,
 
             for (; !iter.done(); iter.next()) {
                 SkASSERT(!cr.isEmpty());
+#if defined(FIMG2D_ENABLED)
+#if (FIMGAPI_G2D_BLOKING == TRUE)
+                gG2DMutex.acquire();
+#else
+                if (gG2DMutex.tryacquire() != 0) {
+                    blitter->blitRect(cr.fLeft, cr.fTop, cr.width(), cr.height());
+                    return;
+                }
+#endif
+
+                fimg.srcX           = cr.fLeft - ix;
+                fimg.srcY           = cr.fTop - iy;
+                fimg.srcW           = cr.width();
+                fimg.srcH           = cr.height();
+                fimg.srcFWStride    = bitmap.rowBytes();
+                fimg.srcFH          = bitmap.height();
+                fimg.srcBPP         = bitmap.bytesPerPixel();
+                fimg.srcColorFormat = bitmap.getConfig();
+                fimg.srcAddr        = (unsigned char *)bitmap.getAddr(0, 0);
+
+#if defined(SAMSUNG_EXYNOS4x12)
+                fimg.isSolidFill    = false;
+#endif
+
+                fimg.dstX           = cr.fLeft;
+                fimg.dstY           = cr.fTop;
+                fimg.dstW           = cr.width();
+                fimg.dstH           = cr.height();
+                fimg.dstFWStride    = fBitmap->rowBytes();
+                fimg.dstFH          = fBitmap->height();
+                fimg.dstBPP         = fBitmap->bytesPerPixel();
+                fimg.dstColorFormat = fBitmap->config();
+                fimg.dstAddr        = (unsigned char *)fBitmap->getAddr(0,0);
+
+                fimg.clipT = cr.fTop;
+                fimg.clipB = cr.fBottom;
+                fimg.clipL = cr.fLeft;
+                fimg.clipR = cr.fRight;
+
+#if defined(SAMSUNG_EXYNOS4x12)
+                fimg.mskAddr        = NULL;
+#endif
+
+                fimg.rotate         = 0;
+
+                SkXfermode::Mode mode;
+                SkXfermode::IsMode(paint.getXfermode(), &mode);
+                fimg.xfermode = mode;
+                fimg.isDither = paint.isDither();
+                fimg.colorFilter = (int)paint.getColorFilter();
+
+                fimg.alpha = paint.getAlpha();
+                if (bitmap.isOpaque() && (255 == fimg.alpha)) {
+#if defined(SAMSUNG_EXYNOS4210)
+                    fimg.alpha = 256;
+#endif
+#if defined(SAMSUNG_EXYNOS4x12)
+                    fimg.alpha = 255;
+#endif
+                }
+
+                if (fimg.srcAddr != NULL) {
+#if defined(SAMSUNG_EXYNOS4210)
+                    fimg.canusehybrid = 1;
+#endif
+#if defined(SAMSUNG_EXYNOS4x12)
+                    fimg.canusehybrid = 0;
+#endif
+                    int retFimg = FimgApiStretch(&fimg, __func__);
+
+                    if (retFimg == FIMGAPI_FINISHED)
+                        fimg.srcAddr = NULL;
+                    else if (retFimg == FIMGAPI_HYBRID) {
+                        fimg.srcAddr = NULL;
+                        blitter->blitRect(cr.fLeft, cr.fTop, cr.width(), cr.height() - (cr.fBottom - (fimg.clipT)));
+                        FimgApiSync(__func__);
+                    } else {
+                        fimg.srcAddr = NULL;
+                        blitter->blitRect(cr.fLeft, cr.fTop, cr.width(), cr.height());
+                    }
+                } else {
+                    blitter->blitRect(cr.fLeft, cr.fTop, cr.width(), cr.height());
+                    fimg.srcAddr = NULL;
+                }
+                gG2DMutex.release();
+
+#else
                 blitter->blitRect(cr.fLeft, cr.fTop, cr.width(), cr.height());
+#endif
             }
             return;
         }
@@ -1176,7 +1423,54 @@ void SkDraw::drawBitmap(const SkBitmap& bitmap, const SkMatrix& prematrix,
         r.set(0, 0, SkIntToScalar(bitmap.width()),
               SkIntToScalar(bitmap.height()));
         // is this ok if paint has a rasterizer?
+#if defined(FIMG2D_ENABLED)
+#if (FIMGAPI_G2D_BLOKING == TRUE)
+        gG2DMutex.acquire();
+#else
+        if (gG2DMutex.tryacquire() != 0) {
+            draw.drawRect(r, install.paintWithShader());
+            return;
+        }
+#endif
+
+        fimg.srcX           = FLOAT_TO_INT(r.fLeft);
+        fimg.srcY           = FLOAT_TO_INT(r.fTop);
+        fimg.srcW           = FLOAT_TO_INT(r.width());
+        fimg.srcH           = FLOAT_TO_INT(r.height());
+
+        fimg.srcFWStride    = bitmap.rowBytes();
+        fimg.srcFH          = bitmap.height();
+        fimg.srcBPP         = bitmap.bytesPerPixel();
+        fimg.srcColorFormat = bitmap.getConfig();
+        fimg.srcAddr        = (unsigned char *)bitmap.getAddr(0, 0);
+
+#if defined(SAMSUNG_EXYNOS4x12)
+        fimg.isSolidFill    = false;
+#endif
+
+        fimg.dstFWStride    = fBitmap->rowBytes();
+        fimg.dstFH          = fBitmap->height();
+        fimg.dstBPP         = fBitmap->bytesPerPixel();
+        fimg.dstColorFormat = fBitmap->config();
+        fimg.dstAddr        = (unsigned char *)fBitmap->getAddr(0,0);
+
+#if defined(SAMSUNG_EXYNOS4x12)
+        fimg.mskAddr        = NULL;
+#endif
+
+        fimg.rotate         = 0;
+
+        fimg.alpha = paint.getAlpha();
+        if (bitmap.isOpaque() && (255 == fimg.alpha))
+            fimg.alpha = 255;
+        fimg.canusehybrid = 0;
+        draw.drawRect_withG2D(r, install.paintWithShader());
+#else
         draw.drawRect(r, install.paintWithShader());
+#endif
+#if defined(FIMG2D_ENABLED)
+        fimg.srcAddr = NULL;
+#endif
     }
 }
 

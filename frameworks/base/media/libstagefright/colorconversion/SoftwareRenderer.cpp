@@ -163,9 +163,16 @@ void SoftwareRenderer::render(
         const uint8_t *src_v = src_u + (mWidth / 2 * mHeight / 2);
 
         uint8_t *dst_y = (uint8_t *)dst;
-        size_t dst_y_size = buf->stride * buf->height;
+#ifdef MALI_ALIGNMENT
+        size_t dst_c_stride = buf->stride / 2;
+        size_t dst_y_size = buf->stride * ALIGN(buf->height, 16);
+        size_t dst_c_size = ALIGN(buf->stride / 2, 16) * ALIGN(buf->height / 2, 16);
+#else
         size_t dst_c_stride = ALIGN(buf->stride / 2, 16);
+        size_t dst_y_size = buf->stride * buf->height;
         size_t dst_c_size = dst_c_stride * buf->height / 2;
+#endif
+
         uint8_t *dst_v = dst_y + dst_y_size;
         uint8_t *dst_u = dst_v + dst_c_size;
 

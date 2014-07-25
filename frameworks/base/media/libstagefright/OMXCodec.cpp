@@ -48,6 +48,19 @@
 
 namespace android {
 
+#if defined(USE_SAMSUNG_COLORFORMAT)
+#include "sec_format.h"
+static const int OMX_SEC_COLOR_FormatNV12TPhysicalAddress = 0x7F000001;
+static const int OMX_SEC_COLOR_FormatNV12LPhysicalAddress = 0x7F000002;
+static const int OMX_SEC_COLOR_FormatNV12Tiled = 0x7FC00002;
+#ifdef S3D_SUPPORT
+static const int OMX_SEC_COLOR_FormatYUV420Planar_SBS_LR = 0x7FC00003;
+static const int OMX_SEC_COLOR_FormatYUV420Planar_SBS_RL = 0x7FC00004;
+static const int OMX_SEC_COLOR_FormatYUV420Planar_TB_LR = 0x7FC00005;
+static const int OMX_SEC_COLOR_FormatYUV420Planar_TB_RL = 0x7FC00006;
+#endif
+#endif
+
 // Treat time out as an error if we have not received any output
 // buffers after 3 seconds.
 const static int64_t kBufferFilledEventTimeOutNs = 3000000000LL;
@@ -140,6 +153,7 @@ static const CodecInfo kDecoderInfo[] = {
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.qcom.video.decoder.avc" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.TI.Video.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.SEC.AVC.Decoder" },
+    { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.SEC.FP.AVC.Decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.google.h264.decoder" },
     { MEDIA_MIMETYPE_VIDEO_AVC, "OMX.google.avc.decoder" },
     { MEDIA_MIMETYPE_AUDIO_VORBIS, "OMX.google.vorbis.decoder" },
@@ -875,6 +889,12 @@ status_t OMXCodec::setVideoPortFormatType(
     return err;
 }
 
+#if defined(USE_SAMSUNG_COLORFORMAT)
+#define ALIGN_TO_8KB(x)   ((((x) + (1 << 13) - 1) >> 13) << 13)
+#define ALIGN_TO_32B(x)   ((((x) + (1 <<  5) - 1) >>  5) <<  5)
+#define ALIGN_TO_128B(x)  ((((x) + (1 <<  7) - 1) >>  7) <<  7)
+#endif
+
 static size_t getFrameSize(
         OMX_COLOR_FORMATTYPE colorFormat, int32_t width, int32_t height) {
     switch (colorFormat) {
@@ -894,8 +914,17 @@ static size_t getFrameSize(
         * this part in the future
         */
         case OMX_COLOR_FormatAndroidOpaque:
+#if defined(USE_SAMSUNG_COLORFORMAT)
+        case OMX_SEC_COLOR_FormatNV12TPhysicalAddress:
+        case OMX_SEC_COLOR_FormatNV12LPhysicalAddress:
+#endif
             return (width * height * 3) / 2;
-
+#if defined(USE_SAMSUNG_COLORFORMAT)
+        case OMX_SEC_COLOR_FormatNV12Tiled:
+            static unsigned int frameBufferYSise = ALIGN_TO_8KB(ALIGN_TO_128B(width) * ALIGN_TO_32B(height));
+            static unsigned int frameBufferUVSise = ALIGN_TO_8KB(ALIGN_TO_128B(width) * ALIGN_TO_32B(height/2));
+            return (frameBufferYSise + frameBufferUVSise);
+#endif
         default:
             CHECK(!"Should not be here. Unsupported color format.");
             break;
@@ -1403,7 +1432,22 @@ status_t OMXCodec::setVideoOutputFormat(
                || format.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar
                || format.eColorFormat == OMX_COLOR_FormatCbYCrY
                || format.eColorFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
-               || format.eColorFormat == OMX_QCOM_COLOR_FormatYVU420SemiPlanar);
+               || format.eColorFormat == OMX_QCOM_COLOR_FormatYVU420SemiPlanar
+#if defined(USE_SAMSUNG_COLORFORMAT)
+               || format.eColorFormat == OMX_SEC_COLOR_FormatNV12TPhysicalAddress
+               || format.eColorFormat == OMX_SEC_COLOR_FormatNV12Tiled
+#endif
+               );
+
+        if (!strcmp("OMX.SEC.FP.AVC.Decoder", mComponentName) ||
+            !strcmp("OMX.SEC.AVC.Decoder", mComponentName) ||
+            !strcmp("OMX.SEC.MPEG4.Decoder", mComponentName) ||
+            !strcmp("OMX.SEC.H263.Decoder", mComponentName)) {
+            if (mNativeWindow == NULL)
+                format.eColorFormat = OMX_COLOR_FormatYUV420Planar;
+            else
+                format.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+        }
 
         err = mOMX->setParameter(
                 mNode, OMX_IndexParamVideoPortFormat,
@@ -1426,13 +1470,15 @@ status_t OMXCodec::setVideoOutputFormat(
 
     CHECK_EQ(err, (status_t)OK);
 
-#if 1
     // XXX Need a (much) better heuristic to compute input buffer sizes.
+#if USE_SAMSUNG_COLORFORMAT
+    const size_t X = 64 * 8 * 1024;  // const size_t X = 64 * 1024;
+#else
     const size_t X = 64 * 1024;
+#endif
     if (def.nBufferSize < X) {
         def.nBufferSize = X;
     }
-#endif
 
     CHECK_EQ((int)def.eDomain, (int)OMX_PortDomainVideo);
 
@@ -1841,13 +1887,40 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
     if (err != OK) {
         return err;
     }
-
+#ifndef USE_SAMSUNG_COLORFORMAT
     err = native_window_set_buffers_geometry(
             mNativeWindow.get(),
             def.format.video.nFrameWidth,
             def.format.video.nFrameHeight,
             def.format.video.eColorFormat);
+#else
+    OMX_COLOR_FORMATTYPE eColorFormat;
 
+    switch (def.format.video.eColorFormat) {
+    case OMX_SEC_COLOR_FormatNV12TPhysicalAddress:
+        eColorFormat = (OMX_COLOR_FORMATTYPE)HAL_PIXEL_FORMAT_CUSTOM_YCbCr_420_SP_TILED;
+        break;
+    case OMX_COLOR_FormatYUV420SemiPlanar:
+        eColorFormat = (OMX_COLOR_FORMATTYPE)HAL_PIXEL_FORMAT_YCbCr_420_SP;
+        break;
+#ifdef S3D_SUPPORT
+    case OMX_SEC_COLOR_FormatYUV420Planar_SBS_LR:
+    case OMX_SEC_COLOR_FormatYUV420Planar_SBS_RL:
+    case OMX_SEC_COLOR_FormatYUV420Planar_TB_LR:
+    case OMX_SEC_COLOR_FormatYUV420Planar_TB_RL:
+#endif
+    case OMX_COLOR_FormatYUV420Planar:
+    default:
+        eColorFormat = (OMX_COLOR_FORMATTYPE)HAL_PIXEL_FORMAT_YCbCr_420_P;
+        break;
+    }
+
+    err = native_window_set_buffers_geometry(
+            mNativeWindow.get(),
+            def.format.video.nFrameWidth,
+            def.format.video.nFrameHeight,
+            eColorFormat);
+#endif
     if (err != 0) {
         LOGE("native_window_set_buffers_geometry failed: %s (%d)",
                 strerror(-err), -err);
@@ -1871,6 +1944,25 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
         usage |= GRALLOC_USAGE_PROTECTED;
     }
 
+#ifdef S3D_SUPPORT
+    //Check whether S3D rendering in HDMI needed
+    switch (def.format.video.eColorFormat) {
+    case OMX_SEC_COLOR_FormatYUV420Planar_SBS_LR:
+        usage |= GRALLOC_USAGE_PRIVATE_SBS_LR;
+        break;
+    case OMX_SEC_COLOR_FormatYUV420Planar_SBS_RL:
+        usage |= GRALLOC_USAGE_PRIVATE_SBS_RL;
+        break;
+    case OMX_SEC_COLOR_FormatYUV420Planar_TB_LR:
+        usage |= GRALLOC_USAGE_PRIVATE_TB_LR;
+        break;
+    case OMX_SEC_COLOR_FormatYUV420Planar_TB_RL:
+        usage |= GRALLOC_USAGE_PRIVATE_SBS_RL;
+        break;
+    default:
+        break;
+    }
+#endif
     // Make sure to check whether either Stagefright or the video decoder
     // requested protected buffers.
     if (usage & GRALLOC_USAGE_PROTECTED) {
@@ -1891,8 +1983,20 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
     }
 
     LOGV("native_window_set_usage usage=0x%lx", usage);
+#ifdef BOARD_USE_V4L2_ION
+    err = native_window_set_usage(
+            mNativeWindow.get(), usage | GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_EXTERNAL_DISP
+                                        | GRALLOC_USAGE_HW_ION | GRALLOC_USAGE_HWC_HWOVERLAY);
+
+#elif BOARD_USES_HDMI
+    err = native_window_set_usage(
+            mNativeWindow.get(), usage | GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_EXTERNAL_DISP
+                                        | GRALLOC_USAGE_HW_FIMC1 | GRALLOC_USAGE_HWC_HWOVERLAY);
+#else
     err = native_window_set_usage(
             mNativeWindow.get(), usage | GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_EXTERNAL_DISP);
+#endif
+
     if (err != 0) {
         LOGE("native_window_set_usage failed: %s (%d)", strerror(-err), -err);
         return err;
@@ -4130,7 +4234,19 @@ static const char *colorFormatString(OMX_COLOR_FORMATTYPE type) {
 
     if (type == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar) {
         return "OMX_TI_COLOR_FormatYUV420PackedSemiPlanar";
-    } else if (type == OMX_QCOM_COLOR_FormatYVU420SemiPlanar) {
+    }
+#if defined(USE_SAMSUNG_COLORFORMAT)
+    if (type == OMX_SEC_COLOR_FormatNV12TPhysicalAddress) {
+        return "OMX_SEC_COLOR_FormatNV12TPhysicalAddress";
+    }
+    if (type == OMX_SEC_COLOR_FormatNV12LPhysicalAddress) {
+        return "OMX_SEC_COLOR_FormatNV12LPhysicalAddress";
+    }
+    if (type == OMX_SEC_COLOR_FormatNV12Tiled) {
+        return "OMX_SEC_COLOR_FormatNV12Tiled";
+    }
+#endif
+    else if (type == OMX_QCOM_COLOR_FormatYVU420SemiPlanar) {
         return "OMX_QCOM_COLOR_FormatYVU420SemiPlanar";
     } else if (type < 0 || (size_t)type >= numNames) {
         return "UNKNOWN";

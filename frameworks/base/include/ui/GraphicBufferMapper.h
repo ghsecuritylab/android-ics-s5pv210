@@ -46,6 +46,8 @@ public:
             int usage, const Rect& bounds, void** vaddr);
 
     status_t unlock(buffer_handle_t handle);
+
+    status_t getphys(buffer_handle_t handle, void** paddr);
     
     // dumps information about the mapping of this handle
     void dump(buffer_handle_t handle);

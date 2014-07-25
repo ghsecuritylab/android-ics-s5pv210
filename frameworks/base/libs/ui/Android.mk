@@ -66,6 +66,13 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_C_INCLUDES := \
     external/skia/include/core
 
+ifeq ($(BOARD_USES_HDMI),true)
+	LOCAL_CFLAGS += -DBOARD_USES_HDMI
+	LOCAL_SHARED_LIBRARIES += libhdmiclient
+	LOCAL_C_INCLUDES += device/samsung/common/$(TARGET_BOARD_PLATFORM)/libhdmi/libhdmiservice
+	LOCAL_C_INCLUDES += device/samsung/common/$(TARGET_BOARD_PLATFORM)/include
+endif
+
 LOCAL_MODULE:= libui
 
 include $(BUILD_SHARED_LIBRARY)

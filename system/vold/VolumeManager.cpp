@@ -63,6 +63,10 @@ VolumeManager::VolumeManager() {
     // set dirty ratio to 0 when UMS is active
     mUmsDirtyRatio = 0;
     mVolManagerDisabled = 0;
+
+#if defined(BOARD_USES_HDMI) || defined(S5P_BOARD_USES_HDMI)
+    mHdmiClient = android::SecHdmiClient::getInstance();
+#endif
 }
 
 VolumeManager::~VolumeManager() {
@@ -145,6 +149,30 @@ void VolumeManager::handleBlockEvent(NetlinkEvent *evt) {
 #endif
     }
 }
+
+#if defined(BOARD_USES_HDMI) || defined(S5P_BOARD_USES_HDMI)
+void VolumeManager::handleMiscEvent(NetlinkEvent *evt)
+{
+    int maj, min;
+    int action;
+    maj = atoi(evt->findParam("MAJOR"));
+    min = atoi(evt->findParam("MINOR"));
+    action = evt->getAction();
+    if (action == NetlinkEvent::NlActionChange ) {
+        const char *state = evt->findParam("HDMI_STATE");
+        // Send the HDMI cable status to libhdmistatus(to SurfaceFlinger)
+        if (!strcmp(state, "online")) {
+            LOGD("HDMI: online\n");
+            mHdmiClient->setHdmiCableStatus(1);
+        } else {
+            LOGD("HDMI: offline\n");
+            mHdmiClient->setHdmiCableStatus(0);
+        }
+    } else {
+        SLOGW("No handler implemented for action %d", action);
+    }
+}
+#endif
 
 int VolumeManager::listVolumes(SocketClient *cli) {
     VolumeCollection::iterator i;

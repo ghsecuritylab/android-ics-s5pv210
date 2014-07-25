@@ -102,6 +102,10 @@ LOCAL_CFLAGS += -Wno-multichar \
     -DUSE_STAGEFRIGHT_READERS \
     -DUSE_STAGEFRIGHT_3GPP_READER
 
+ifeq ($(TARGET_BOARD_PLATFORM), exynos4)
+LOCAL_CFLAGS += -DMALI_ALIGNMENT
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 #include $(call all-makefiles-under,$(LOCAL_PATH))

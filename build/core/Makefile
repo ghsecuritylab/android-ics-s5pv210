@@ -347,7 +347,7 @@ INSTALLED_RAMDISK_TARGET := $(BUILT_RAMDISK_TARGET)
 $(INSTALLED_RAMDISK_TARGET): $(MKBOOTFS) $(INTERNAL_RAMDISK_FILES) | $(MINIGZIP)
 	$(call pretty,"Target ram disk: $@")
 	$(hide) $(MKBOOTFS) $(TARGET_ROOT_OUT) | $(MINIGZIP) > $@
-
+	mkimage -A arm -O linux -T ramdisk -C none -a 0x30A00000 -n "ramdisk" -d $@ out/target/product/$(TARGET_DEVICE)/ramdisk-uboot.img
 
 ifneq ($(strip $(TARGET_NO_KERNEL)),true)
 

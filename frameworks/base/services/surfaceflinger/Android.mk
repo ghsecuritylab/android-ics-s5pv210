@@ -30,7 +30,9 @@ ifeq ($(TARGET_BOARD_PLATFORM), s5pc110)
 	LOCAL_CFLAGS += -DHAS_CONTEXT_PRIORITY -DNEVER_DEFAULT_TO_ASYNC_MODE
 	LOCAL_CFLAGS += -DREFRESH_RATE=56
 endif
-
+ifeq ($(filter-out smdkc110 smdkv210,$(TARGET_BOARD_PLATFORM)),)
+	LOCAL_CFLAGS += -DHAS_CONTEXT_PRIORITY -DNEVER_DEFAULT_TO_ASYNC_MODE -DHWC_LAYER_DIRTY_INFO
+endif
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
@@ -49,6 +51,13 @@ LOCAL_C_INCLUDES := \
 	$(call include-path-for, corecg graphics)
 
 LOCAL_C_INCLUDES += hardware/libhardware/modules/gralloc
+
+ifeq ($(BOARD_USES_HDMI),true)
+	LOCAL_CFLAGS += -DBOARD_USES_HDMI
+	LOCAL_SHARED_LIBRARIES += libTVOut
+	LOCAL_C_INCLUDES += device/samsung/common/$(TARGET_BOARD_PLATFORM)/libhdmi/libhdmiservice
+	LOCAL_C_INCLUDES += device/samsung/common/$(TARGET_BOARD_PLATFORM)/include
+endif
 
 LOCAL_MODULE:= libsurfaceflinger
 

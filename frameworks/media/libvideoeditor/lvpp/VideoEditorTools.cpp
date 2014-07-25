@@ -2999,7 +2999,11 @@ M4OSA_Void prepareYV12ImagePlane(M4VIFI_ImagePlane *plane,
     // U plane
     plane[1].u_width = width/2;
     plane[1].u_height = height/2;
+#ifdef MALI_ALIGNMENT
+    plane[1].u_stride = plane[0].u_stride / 2;
+#else
     plane[1].u_stride = android::PreviewRenderer::ALIGN(plane[0].u_stride/2, 16);
+#endif
     plane[1].u_topleft = 0;
     plane[1].pac_data = (buffer
                 + plane[0].u_height * plane[0].u_stride
@@ -3009,7 +3013,11 @@ M4OSA_Void prepareYV12ImagePlane(M4VIFI_ImagePlane *plane,
     // V Plane
     plane[2].u_width = width/2;
     plane[2].u_height = height/2;
+#ifdef MALI_ALIGNMENT
+    plane[2].u_stride = plane[0].u_stride / 2;
+#else
     plane[2].u_stride = android::PreviewRenderer::ALIGN(plane[0].u_stride/2, 16);
+#endif
     plane[2].u_topleft = 0;
     plane[2].pac_data = (buffer +
      plane[0].u_height * android::PreviewRenderer::ALIGN(plane[0].u_stride, 16));

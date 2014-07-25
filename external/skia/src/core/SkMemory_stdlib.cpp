@@ -259,7 +259,15 @@ void* sk_malloc_flags(size_t size, unsigned flags)
     size += sizeof(SkBlockHeader);
 #endif
     
+#if defined(FIMG2D_ENABLED) && defined(SAMSUNG_EXYNOS4210)
+    size += (8 + 4096);
+#endif
+
     void* p = malloc(size);
+
+#if defined(FIMG2D_ENABLED) && defined(SAMSUNG_EXYNOS4210)
+    memset(p + (size - (8 + 4096)), 0x0, (8 + 4096));
+#endif
     if (p == NULL)
     {
         if (flags & SK_MALLOC_THROW)

@@ -39,6 +39,12 @@ LOCAL_C_INCLUDES := $(common_c_includes)
 
 LOCAL_SHARED_LIBRARIES := $(common_shared_libraries)
 
+ifeq ($(S5P_BOARD_USES_HDMI),true)
+	LOCAL_CFLAGS     += -DS5P_BOARD_USES_HDMI
+	LOCAL_SHARED_LIBRARIES  += libhdmiclient
+	LOCAL_C_INCLUDES += device/samsung/common/s5p/libhdmi
+endif
+
 LOCAL_MODULE_TAGS := eng tests
 
 include $(BUILD_STATIC_LIBRARY)
@@ -56,6 +62,19 @@ LOCAL_C_INCLUDES := $(common_c_includes)
 LOCAL_CFLAGS := 
 
 LOCAL_SHARED_LIBRARIES := $(common_shared_libraries)
+
+ifeq ($(S5P_BOARD_USES_HDMI),true)
+	LOCAL_CFLAGS     += -DS5P_BOARD_USES_HDMI
+	LOCAL_SHARED_LIBRARIES  += libhdmiclient
+	LOCAL_C_INCLUDES += device/samsung/common/s5p/libhdmi
+endif
+
+ifeq ($(BOARD_USES_HDMI),true)
+LOCAL_CFLAGS += -DBOARD_USES_HDMI
+LOCAL_SHARED_LIBRARIES += libhdmiclient
+LOCAL_C_INCLUDES += \
+	device/samsung/common/$(TARGET_BOARD_PLATFORM)/libhdmi/libhdmiservice
+endif
 
 include $(BUILD_EXECUTABLE)
 

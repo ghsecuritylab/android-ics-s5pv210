@@ -216,6 +216,7 @@ public class ActivityManager {
      * @hide
      */
     static public boolean isHighEndGfx(Display display) {
+	//Disable this for software rendering    
         MemInfoReader reader = new MemInfoReader();
         reader.readMemInfo();
         if (reader.getTotalSize() >= (512*1024*1024)) {

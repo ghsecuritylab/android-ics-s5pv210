@@ -54,4 +54,9 @@ void NetlinkHandler::onEvent(NetlinkEvent *evt) {
     if (!strcmp(subsys, "block")) {
         vm->handleBlockEvent(evt);
     }
+#if defined(BOARD_USES_HDMI) || defined(S5P_BOARD_USES_HDMI)
+    else if ((!strcmp(subsys, "misc")) || (!strcmp(subsys, "video4linux"))) {
+        vm->handleMiscEvent(evt);
+    }
+#endif
 }

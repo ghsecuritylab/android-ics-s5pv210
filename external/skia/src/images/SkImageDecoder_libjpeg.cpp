@@ -26,11 +26,27 @@
 #include "SkRect.h"
 #include "SkCanvas.h"
 
+#ifdef SEC_SKIAHWJPEG
+#include "SkFimpV2x.h"
+#endif
+
 #include <stdio.h>
 extern "C" {
     #include "jpeglib.h"
     #include "jerror.h"
+#ifdef SEC_SKIAHWJPEG
+    #include <cutils/log.h>
+#endif
 }
+
+#ifdef SEC_HWJPEG_G2D
+#if defined(SAMSUNG_EXYNOS4210)
+#include "SkFimgApi3x.h"
+#endif
+#if defined(SAMSUNG_EXYNOS4x12)
+#include "SkFimgApi4x.h"
+#endif
+#endif
 
 #ifdef ANDROID
 #include <cutils/properties.h>
@@ -282,6 +298,94 @@ bool SkJPEGImageDecoder::onDecode(SkStream* stream, SkBitmap* bm, Mode mode) {
         return true;
     }
 
+#ifdef SEC_SKIAHWJPEG
+    const void *jpeg_out;
+    int jpeg_ret = 0;
+
+    SecJPEGCodec *sec_jpeg = new SecJPEGCodec;
+
+    jpeg_ret = sec_jpeg->checkHwJPEGSupport(config, &cinfo, sampleSize);
+    if (jpeg_ret != true) {
+        sec_jpeg->setHwJPEGFlag(false);
+        goto SWJPEG;
+    }
+
+    if (sec_jpeg->isHwJPEG() == true) {
+        jpeg_ret = sec_jpeg->setDecodeHwJPEGConfig(config, &cinfo, stream);
+        if (jpeg_ret < 0) {
+            sec_jpeg->setHwJPEGFlag(false);
+            LOGE("[%s]JPEG Decode Setup failed", __func__);
+            goto SWJPEG;
+        }
+
+        jpeg_ret = sec_jpeg->setHwJPEGInputBuffer(stream);
+        if (jpeg_ret < 0) {
+            sec_jpeg->setHwJPEGFlag(false);
+            LOGD("[%s]JPEG Decode IN Buffer alloc failed", __func__);
+            return false;
+        }
+
+        jpeg_out = sec_jpeg->setHwJPEGOutputBuffer();
+        if (jpeg_out <= 0) {
+            sec_jpeg->setHwJPEGFlag(false);
+            LOGE("[%s]JPEG Decode OUT Buffer alloc failed", __func__);
+            return false;
+        }
+
+        jpeg_ret = sec_jpeg->executeDecodeHwJPEG();
+        if (jpeg_ret < 0) {
+            sec_jpeg->setHwJPEGFlag(false);
+            LOGE("[%s]JPEG Decode EXE failed", __func__);
+            return false;
+        }
+    }
+
+    if (sec_jpeg->isHwJPEG() == true) {
+        bm->lockPixels();
+        JSAMPLE* rowptr = (JSAMPLE*)bm->getPixels();
+        bm->unlockPixels();
+        bool reuseBitmap = (rowptr != NULL);
+        if (reuseBitmap && ((int) cinfo.output_width != bm->width() ||
+                (int) cinfo.output_height != bm->height())) {
+            // Dimensions must match
+            delete sec_jpeg;
+            return false;
+        }
+
+        if (!reuseBitmap) {
+            bm->setConfig(config, cinfo.output_width, cinfo.output_height);
+            bm->setIsOpaque(true);
+            if (SkImageDecoder::kDecodeBounds_Mode == mode) {
+                delete sec_jpeg;
+                return true;
+            }
+            if (!this->allocPixelRef(bm, NULL)) {
+                delete sec_jpeg;
+                return return_false(cinfo, *bm, "allocPixelRef");
+            }
+        } else if (SkImageDecoder::kDecodeBounds_Mode == mode) {
+            delete sec_jpeg;
+            return true;
+        }
+        SkAutoLockPixels alp(*bm);
+        rowptr = (JSAMPLE*)bm->getPixels();
+
+        sec_jpeg->outputJpeg(bm, rowptr);
+
+        jpeg_destroy_decompress(&cinfo);
+
+        delete sec_jpeg;
+
+        if (reuseBitmap) {
+            bm->notifyPixelsChanged();
+        }
+
+        return true;
+    }
+SWJPEG:
+    delete sec_jpeg;
+
+#endif // SEC_SKIAHWJPEG
     /*  image_width and image_height are the original dimensions, available
         after jpeg_read_header(). To see the scaled dimensions, we have to call
         jpeg_start_decompress(), and then read output_width and output_height.

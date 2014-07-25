@@ -508,6 +508,9 @@ ifeq ($(TARGET_ARCH),arm)
   ifeq ($(ARCH_ARM_HAVE_TLS_REGISTER),true)
     libc_common_cflags += -DHAVE_ARM_TLS_REGISTER
   endif
+  ifeq ($(filter-out exynos4,$(TARGET_BOARD_PLATFORM)),)
+    libc_common_cflags += -DSAMSUNG_DISABLE_NEON_MEMCPY
+  endif
 else # !arm
   ifeq ($(TARGET_ARCH),x86)
     libc_crt_target_cflags := -m32

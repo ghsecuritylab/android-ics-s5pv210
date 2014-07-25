@@ -58,6 +58,10 @@
 
 #include <private/surfaceflinger/SharedBufferStack.h>
 
+#if defined(BOARD_USES_HDMI)
+#include "SecTVOutService.h"
+#endif
+
 /* ideally AID_GRAPHICS would be in a semi-public header
  * or there would be a way to map a user/group name to its id
  */
@@ -102,6 +106,12 @@ SurfaceFlinger::SurfaceFlinger()
         mSecureFrameBuffer(0)
 {
     init();
+
+#if defined(BOARD_USES_HDMI)
+    LOGD(">>> Run service");
+    android::SecTVOutService::instantiate();
+#endif
+
 }
 
 void SurfaceFlinger::init()
@@ -980,9 +990,15 @@ void SurfaceFlinger::composeSurfaces(const Region& dirty)
         if (cur && (cur[i].compositionType != HWC_FRAMEBUFFER)) {
             continue;
         }
+#if defined(HWC_LAYER_DIRTY_INFO)
+	cur[i].flags &= (~0x80000000);
+#endif
         const sp<LayerBase>& layer(layers[i]);
         const Region clip(dirty.intersect(layer->visibleRegionScreen));
         if (!clip.isEmpty()) {
+#if defined(HWC_LAYER_DIRTY_INFO)
+	    cur[i].flags |= (0x80000000);  //flag for dirty region.
+#endif
             layer->draw(clip);
         }
     }

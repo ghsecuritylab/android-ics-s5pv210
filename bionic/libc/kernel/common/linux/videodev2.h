@@ -664,6 +664,8 @@ enum v4l2_colorfx {
  V4L2_COLORFX_BW = 1,
  V4L2_COLORFX_SEPIA = 2,
 };
+/* cacheable configuration */
+#define V4L2_CID_CACHEABLE (V4L2_CID_BASE+40)
 
 #define V4L2_CID_MPEG_BASE (V4L2_CTRL_CLASS_MPEG | 0x900)
 #define V4L2_CID_MPEG_CLASS (V4L2_CTRL_CLASS_MPEG | 1)
