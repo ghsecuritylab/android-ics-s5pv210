@@ -12,6 +12,7 @@ PRODUCT_COPY_FILES := \
 	device/samsung/smdkv210/s3c-keypad.kl:system/usr/keylayout/s3c-keypad.kl \
         device/samsung/smdkv210/s3c-keypad.kcm:system/usr/keychars/s3c-keypad.kcm \
         device/samsung/smdkv210/s3c_ts.idc:system/usr/idc/s3c_ts.idc \
+        device/samsung/smdkv210/ft5x0x_ts.idc:system/usr/idc/ft5x0x_ts.idc \
 	device/samsung/smdkv210/vold.fstab:system/etc/vold.fstab
 
 PRODUCT_PROPERTY_OVERRIDES += \
