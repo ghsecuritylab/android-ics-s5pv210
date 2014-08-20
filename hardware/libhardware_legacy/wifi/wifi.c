@@ -54,21 +54,21 @@ static char iface[PROPERTY_VALUE_MAX];
 // sockets is in
 
 #ifndef WIFI_DRIVER_MODULE_ARG
-#define WIFI_DRIVER_MODULE_ARG          ""
+#define WIFI_DRIVER_MODULE_ARG          "firmware_path=/system/vendor/firmware/fw_bcmdhd.bin nvram_path=/system/vendor/firmware/nvram-bcmdhd.txt"
 #endif
 #ifndef WIFI_FIRMWARE_LOADER
 #define WIFI_FIRMWARE_LOADER		""
 #endif
-#define WIFI_TEST_INTERFACE		"sta"
+#define WIFI_TEST_INTERFACE		"wlan0"
 
 #ifndef WIFI_DRIVER_FW_PATH_STA
-#define WIFI_DRIVER_FW_PATH_STA		NULL
+#define WIFI_DRIVER_FW_PATH_STA		"/system/vendor/firmware/fw_bcmdhd.bin"
 #endif
 #ifndef WIFI_DRIVER_FW_PATH_AP
-#define WIFI_DRIVER_FW_PATH_AP		NULL
+#define WIFI_DRIVER_FW_PATH_AP		""
 #endif
 #ifndef WIFI_DRIVER_FW_PATH_P2P
-#define WIFI_DRIVER_FW_PATH_P2P		NULL
+#define WIFI_DRIVER_FW_PATH_P2P		""
 #endif
 
 #ifndef WIFI_DRIVER_FW_PATH_PARAM
@@ -76,6 +76,14 @@ static char iface[PROPERTY_VALUE_MAX];
 #endif
 
 #define WIFI_DRIVER_LOADER_DELAY	1000000
+
+#ifndef WIFI_DRIVER_MODULE_PATH
+#define WIFI_DRIVER_MODULE_PATH "/system/module/bcmdhd.ko"
+#endif
+
+#ifndef WIFI_DRIVER_MODULE_NAME
+#define WIFI_DRIVER_MODULE_NAME "bcmdhd"
+#endif
 
 static const char IFACE_DIR[]           = "/data/system/wpa_supplicant";
 #ifdef WIFI_DRIVER_MODULE_PATH

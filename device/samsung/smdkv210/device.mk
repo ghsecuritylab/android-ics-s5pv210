@@ -49,6 +49,10 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
         $(PRODUCT_COMMON_DIR)/samsung_mfc_fw.bin:system/vendor/firmware/samsung_mfc_fw.bin
 
+#bin
+PRODUCT_COPY_FILES += \
+	device/samsung/smdkv210/usih4_arm:system/bin/usih4_arm \
+	device/samsung/smdkv210/BCM4330.hcd:/system/etc/bluetooth/BCM4330.hcd
 
 # These are the OpenMAX IL modules
 PRODUCT_PACKAGES += \
@@ -72,3 +76,4 @@ PRODUCT_PACKAGES += \
 
 $(call inherit-product, frameworks/base/build/phone-xhdpi-1024-dalvik-heap.mk)
 $(call inherit-product-if-exists, vendor/samsung/smdkv210/device-vendor.mk)
+$(call inherit-product, hardware/broadcom/wlan/bcmdhd/firmware/bcmdhd/device-bcm.mk)

@@ -23,3 +23,9 @@
 # for TVOUT
 /dev/i2c-1                0666   system     system
 /dev/CEC                  0666   system     system
+
+/dev/ttySAC0            0666    system  system
+/dev/ttySAC1            0666    system  system
+/dev/ttySAC2            0666    system  system
+/dev/ttySAC3            0666    system  system
+
