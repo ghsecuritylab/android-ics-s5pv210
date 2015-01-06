@@ -200,7 +200,7 @@ void CameraHardwareSec::initDefaultParameters(int cameraId)
     p.set(CameraParameters::KEY_JPEG_QUALITY, "100"); // maximum quality
     p.set(CameraParameters::KEY_SUPPORTED_PICTURE_FORMATS,
           CameraParameters::PIXEL_FORMAT_JPEG);
-    p.set(CameraParameters::KEY_PREFERRED_PREVIEW_SIZE_FOR_VIDEO, "720x480");
+    p.set(CameraParameters::KEY_PREFERRED_PREVIEW_SIZE_FOR_VIDEO, "640x480");
 
     String8 parameterString;
 

@@ -73,9 +73,11 @@ namespace android {
 #define JOIN(x, y) JOIN_AGAIN(x, y)
 #define JOIN_AGAIN(x, y) x ## y
 
-#define SMDK_BOARD
-#define FRONT_CAM 	S5K6AA //MIPI
-#define BACK_CAM	S5K4BA
+#define SMDK_BOARD_V70
+//#define FRONT_CAM 	S5K6AA //MIPI
+//#define BACK_CAM	S5K4BA
+#define FRONT_CAM 	HM5065 //MIPI
+#define BACK_CAM	HM5065
 
 #if !defined (FRONT_CAM) || !defined(BACK_CAM)
 #error "Please define the Camera module"
@@ -109,6 +111,21 @@ namespace android {
 #define S5K6AA_THUMBNAIL_HEIGHT         120
 #define S5K6AA_THUMBNAIL_BPP            16
 #define S5K6AA_FOCAL_LENGTH             90
+
+#elif defined(SMDK_BOARD_V70)
+#define HM5065_PREVIEW_WIDTH            640
+#define HM5065_PREVIEW_HEIGHT           480
+#define HM5065_SNAPSHOT_WIDTH           2560
+#define HM5065_SNAPSHOT_HEIGHT          1920
+#define HM5065_POSTVIEW_WIDTH           640
+#define HM5065_POSTVIEW_WIDE_WIDTH      640
+#define HM5065_POSTVIEW_HEIGHT          480
+#define HM5065_POSTVIEW_BPP             16
+#define HM5065_THUMBNAIL_WIDTH          320
+#define HM5065_THUMBNAIL_HEIGHT         240
+#define HM5065_THUMBNAIL_BPP            16
+#define HM5065_FOCAL_LENGTH             343
+#define HM5065_FLAG_HW_UPDOWN_MIRROR	FALSE
 
 #else
 
