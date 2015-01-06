@@ -552,6 +552,12 @@ class ServerThread extends Thread {
             } catch (Throwable e) {
                 reportWtf("starting NetworkTimeUpdate service", e);
             }
+	     try {
+			Slog.i(TAG, "Scan Service");
+			ServiceManager.addService("scan", new ScanService(context));
+	    } catch (Throwable e) {
+			Slog.e(TAG, "Failure starting Scan Service", e);
+	    }
         }
 
         // Before things start rolling, be sure we have decided whether

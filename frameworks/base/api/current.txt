@@ -27742,6 +27742,21 @@ package com.android.internal.util {
 
 }
 
+package com.android.server {
+
+  public abstract interface IScanService implements android.os.IInterface {
+    method public abstract java.lang.String getBarcode() throws android.os.RemoteException;
+  }
+
+  public static abstract class IScanService.Stub extends android.os.Binder implements com.android.server.IScanService {
+    ctor public IScanService.Stub();
+    method public android.os.IBinder asBinder();
+    method public static com.android.server.IScanService asInterface(android.os.IBinder);
+    method public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
+  }
+
+}
+
 package dalvik.annotation {
 
   public abstract deprecated class TestTarget implements java.lang.annotation.Annotation {
