@@ -40,6 +40,10 @@ PRODUCT_PACKAGES += \
         hwcomposer.smdkv210 \
         libaudioutils
 
+# GPS
+PRODUCT_COPY_FILES += \
+        device/samsung/smdkv210/gps.conf:system/etc/gps.conf
+
 # These is the OpenMAX IL configuration files
 PRODUCT_COPY_FILES += \
 	$(PRODUCT_COMMON_DIR)/sec_mm/sec_omx/sec_omx_core/secomxregistry:system/etc/secomxregistry \
