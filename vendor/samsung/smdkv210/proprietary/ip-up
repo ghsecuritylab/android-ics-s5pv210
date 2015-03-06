@@ -1,0 +1,35 @@
+#!/system/bin/sh
+echo "test ip-up start fantao"
+case $1 in
+    ppp1)
+	echo "test ppp1"
+	/system/bin/iptables --flush;
+	/system/bin/iptables --table nat --flush;
+	/system/bin/iptables --delete-chain;
+	/system/bin/iptables --table nat --append POSTROUTING --out-interface ppp0 -j MASQUERADE;
+	/system/bin/iptables --append FORWARD --in-interface ppp1 -j ACCEPT;
+	echo 0 > /proc/sys/net/ipv4/ip_forward;
+	echo 1 > /proc/sys/net/ipv4/ip_forward;
+	echo $PPPD_PID > /etc/ppp/ppp1.pid;
+	;;
+    ppp0)
+	echo "test ppp0"
+        /system/bin/setprop "net.interfaces.defaultroute" "gprs";
+        echo $PPPD_PID > /etc/ppp/ppp0.pid;
+        ;;
+esac
+
+echo "test ip-up case end fantao"
+# Use interface name if linkname is not available
+NAME=${LINKNAME:-"$1"}
+
+#/system/bin/setprop "net.dns1" "$DNS1"
+#/system/bin/setprop "net.dns2" "$DNS2" 
+/system/bin/setprop "net.$NAME.dns1" "$DNS1"
+/system/bin/setprop "net.$NAME.dns2" "$DNS2"
+/system/bin/setprop "net.$NAME.local-ip" "$IPLOCAL" 
+/system/bin/setprop "net.$NAME.remote-ip" "$IPREMOTE" 
+/system/bin/setprop "net.$NAME.gw" "$IPREMOTE"
+/system/bin/setprop "net.$NAME.status" "running"
+
+echo "test ip-up ended fantao"

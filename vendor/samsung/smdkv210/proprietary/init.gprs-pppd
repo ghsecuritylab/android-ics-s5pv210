@@ -1,0 +1,25 @@
+#!/system/bin/sh
+# RealARM pppd script
+# by Figo,sagres_2004@163.com,2011.1.3
+echo "init gprs 1start"
+PPPD_PID=
+/system/bin/setprop "net.gprs.ppp-exit" ""
+/system/bin/log -t pppd "Starting pppd script in init.gprs-pppd"
+ppp_status=`getprop net.pppd.gprs`
+echo "init gprs 2start"
+if [ "$ppp_status" != "start" ]
+then
+	/system/bin/stop pppd_gprs
+	exit 1
+fi
+echo "init gprs 3start"
+/system/busybox/bin/route del default
+echo "init gprs 4start"
+/system/bin/pppd $*
+echo "init gprs 5start"
+
+PPPD_EXIT=$?
+PPPD_PID=$!
+/system/bin/log -t pppd "pppd exited with $PPPD_EXIT"
+/system/bin/setprop "net.gprs.ppp-exit" "$PPPD_EXIT"
+echo "init gprs ended"

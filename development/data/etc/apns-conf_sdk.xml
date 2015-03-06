@@ -24,6 +24,31 @@
 <!-- use empty string to specify no proxy or port -->
 <!-- This version must agree with that in apps/common/res/apns.xml -->
 <apns version="7">
+
+<apn carrier="China Telecom CTNET" mcc="460" mnc="03" apn="ctnet" user="ctnet@mycdma.cn" password="vnet.mobi" authenticationtype="3" type="default,hipri,internet" />
+  <apn carrier="China Telecom CTWAP" mcc="460" mnc="03" apn="ctwap" proxy="10.0.0.200" port="80" user="ctwap@mycdma.cn" password="vnet.mobi" authenticationtype="3" type="default,hipri,httpproxy,admin,supl"/>
+  <apn carrier="China Telecom MMS" mcc="460" mnc="03" apn="ctwap" user="ctwap@mycdma.cn" password="vnet.mobi" mmsc="http://mmsc.vnet.mobi" mmsproxy="10.0.0.200" mmsport="80" mmsprotocol="2.0" authenticationtype="3" type="mms" />
+
+  <apn carrier="China Mobile NET" mcc="460" mnc="00" apn="cmnet" type="default,supl" />
+  <apn carrier="China Mobile WAP" mcc="460" mnc="00" apn="cmwap" proxy="10.0.0.172" port="80" type="default" />
+  <apn carrier="China Mobile MMS" mcc="460" mnc="00" apn="cmwap" proxy="10.0.0.172" port="80" mmsc="http://mmsc.monternet.com" mmsproxy="10.0.0.172" mmsport="80" type="mms" />
+
+  <apn carrier="China Mobile NET" mcc="460" mnc="02" apn="cmnet" type="default,supl" />
+  <apn carrier="China Mobile WAP" mcc="460" mnc="02" apn="cmwap" proxy="10.0.0.172" port="80" type="default" />
+  <apn carrier="China Mobile MMS" mcc="460" mnc="02" apn="cmwap" proxy="10.0.0.172" port="80" mmsc="http://mmsc.monternet.com" mmsproxy="10.0.0.172" mmsport="80" type="mms" />
+
+  <apn carrier="China Mobile NET" mcc="460" mnc="07" apn="cmnet" type="default,supl" />
+  <apn carrier="China Mobile WAP" mcc="460" mnc="07" apn="cmwap" proxy="10.0.0.172" port="80" type="default" />
+  <apn carrier="China Mobile MMS" mcc="460" mnc="07" apn="cmwap" proxy="10.0.0.172" port="80" mmsc="http://mmsc.monternet.com" mmsproxy="10.0.0.172" mmsport="80" type="mms" />
+
+  <apn carrier="China Unicom NET" mcc="460" mnc="01" apn="uninet" type="default,supl" />
+  <apn carrier="China Unicom WAP" mcc="460" mnc="01" apn="uniwap" proxy="10.0.0.172" port="80" type="default" />
+  <apn carrier="China Unicom MMS" mcc="460" mnc="01" apn="uniwap" proxy="10.0.0.172" port="80" mmsc="http://mmsc.myuni.com.cn" mmsproxy="10.0.0.172" mmsport="80" type="mms" />
+
+  <apn carrier="China Unicom NET" mcc="460" mnc="01" apn="3gnet" type="default,supl" />
+  <apn carrier="China Unicom WAP" mcc="460" mnc="01" apn="3gwap" proxy="10.0.0.172" port="80" type="default" />
+  <apn carrier="China Unicom MMS" mcc="460" mnc="01" apn="3gwap" proxy="10.0.0.172" port="80" mmsc="http://mmsc.myuni.com.cn" mmsproxy="10.0.0.172" mmsport="80" type="mms" />
+
     <apn carrier="Android"
         mcc="310"
         mnc="995"

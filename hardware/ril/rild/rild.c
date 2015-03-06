@@ -134,7 +134,7 @@ int main(int argc, char **argv)
     }
 
     /* special override when in the emulator */
-#if 1
+#if 0
     {
         static char*  arg_overrides[3];
         static char   arg_device[32];
@@ -240,7 +240,7 @@ int main(int argc, char **argv)
     }
 OpenLib:
 #endif
-    switchUser();
+//    switchUser();
 
     dlHandle = dlopen(rilLibPath, RTLD_NOW);
 

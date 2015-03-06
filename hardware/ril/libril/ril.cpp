@@ -86,7 +86,7 @@ namespace android {
 #define PRINTBUF_SIZE 8096
 
 // Enable RILC log
-#define RILC_LOG 0
+#define RILC_LOG 1
 
 #if RILC_LOG
     #define startRequest           sprintf(printBuf, "(")
@@ -1491,14 +1491,13 @@ static int responseDataCallListV4(Parcel &p, void *response, size_t responselen)
     }
 
     if (responselen % sizeof(RIL_Data_Call_Response_v4) != 0) {
-        LOGE("invalid response length %d expected multiple of %d",
+        LOGE("ttinvalid response length %d expected multiple of %d",
                 (int)responselen, (int)sizeof(RIL_Data_Call_Response_v4));
         return RIL_ERRNO_INVALID_RESPONSE;
     }
 
     int num = responselen / sizeof(RIL_Data_Call_Response_v4);
     p.writeInt32(num);
-
     RIL_Data_Call_Response_v4 *p_cur = (RIL_Data_Call_Response_v4 *) response;
     startResponse;
     int i;
@@ -1507,11 +1506,13 @@ static int responseDataCallListV4(Parcel &p, void *response, size_t responselen)
         p.writeInt32(p_cur[i].active);
         writeStringToParcel(p, p_cur[i].type);
         // apn is not used, so don't send.
+		  writeStringToParcel(p, p_cur[i].apn);//add, from android 2.3
         writeStringToParcel(p, p_cur[i].address);
-        appendPrintBuf("%s[cid=%d,%s,%s,%s],", printBuf,
+        appendPrintBuf("%s[cid=%d,%s,%s,%s,%s],", printBuf,
             p_cur[i].cid,
             (p_cur[i].active==0)?"down":"up",
             (char*)p_cur[i].type,
+            (char*)p_cur[i].apn,
             (char*)p_cur[i].address);
     }
     removeLastChar;
@@ -1945,8 +1946,32 @@ static int responseRilSignalStrength(Parcel &p,
                 p_cur->LTE_SignalStrength.cqi);
         closeResponse;
 
+    } else if (responselen % sizeof (int) == 0) {
+        // Old RIL deprecated
+        int *p_cur = (int *) response;
+
+        startResponse;
+
+        // With the Old RIL we see one or 2 integers.
+        size_t num = responselen / sizeof (int); // Number of integers from ril
+        size_t totalIntegers = 12; // Number of integers in RIL_SignalStrength
+        size_t i;
+
+        appendPrintBuf("%s[", printBuf);
+        for (i = 0; i < num; i++) {
+            appendPrintBuf("%s %d", printBuf, *p_cur);
+            p.writeInt32(*p_cur++);
+        }
+        appendPrintBuf("%s]", printBuf);
+
+        // Fill the remainder with zero's.
+        //for (; i < totalIntegers; i++) {
+        //    p.writeInt32(0);
+        //}
+
+        closeResponse;
     } else {
-        LOGE("invalid response length");
+        LOGE("invalid response length real_lenfff:%d, need:%d\n", responselen, sizeof (RIL_SignalStrength_v5));
         return RIL_ERRNO_INVALID_RESPONSE;
     }
 

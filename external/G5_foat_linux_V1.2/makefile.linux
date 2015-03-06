@@ -1,0 +1,10 @@
+g5_foat:main_foat.o utilfunc.o    
+# 下面一行一定要加TAB键
+	gcc -o g5_foat main_foat.o utilfunc.o  -lpthread
+main_foat.o:main_foat.c   foat.h
+	gcc   -c   main_foat.c
+utilfunc.o:utilfunc.c   foat.h     
+	gcc   -c   utilfunc.c
+
+clean:
+	rm *.o g5_foat

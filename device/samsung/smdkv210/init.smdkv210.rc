@@ -1,5 +1,9 @@
 import init.smdkv210.usb.rc
 
+    setprop ro.build.product smdkv210
+    setprop ro.product.device smdkv210
+    setprop ro.telephony.default_network 1
+
 on early-init
     export EXTERNAL_STORAGE /mnt/sdcard
     export SECONDARY_STORAGE /mnt/ext_sd:/mnt/usb
@@ -80,6 +84,20 @@ on fs
 	symlink /mnt/sdcard /sdcard
 	symlink /mnt/ext_sd /ext_sd
 
+	mkdir /data/misc/pppd 0775 radio radio
+	mkdir /data/ppp 0777 radio system
+	chown root /system/bin/pppd
+	chmod 4755 /system/bin/pppd
+	chown root /system/bin/chat
+	chmod 4755 /system/bin/chat
+	chmod 755 /system/etc/ppp/ip-up
+	chown root /system/bin/gsmmux
+	chmod 4755 /system/bin/gsmmux
+	chmod 0666 /system/etc/ppp/cmnet-gprs
+	chmod 0666 /system/etc/ppp/cmwap-gprs
+	chmod 0666 /system/etc/ppp/uninet-gprs
+	chmod 0666 /system/etc/ppp/uniwap-gprs
+
 #wifi
 	mkdir /system/etc/wifi 0777 wifi wifi
 	chmod 0777 /system/etc/wifi
@@ -100,6 +118,20 @@ on fs
 #bt
 	mkdir /data/misc/bluetoothd 0770 bluetooth bluetooth
 	mkdir /data/misc/bluetooth 0770 system system
+
+service gsmmux /system/bin/gsmmux -p /dev/ttySAC0 -b 115200 -s /dev/mux -w /dev/ptmx /dev/ptmx
+    class main
+    user root
+    group root
+    disabled
+    oneshot
+
+service ril-daemon /system/bin/logwrapper /system/bin/rild -l /system/lib/libght-ril.so -- -d /dev/mux0
+    class main
+    socket rild stream 0660 root radio
+    socket rild-debug stream 0660 radio system
+    user root
+    group radio cache inet misc audio
 
 service dbus /system/bin/dbus-daemon --system --nofork
 	socket dbus stream 660 bluetooth bluetooth
